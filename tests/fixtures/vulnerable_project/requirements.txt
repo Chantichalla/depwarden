@@ -1,0 +1,3 @@
+# Project with an old vulnerable version of requests
+requests==2.25.0
+flask==2.0.0
