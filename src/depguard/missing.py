@@ -10,18 +10,21 @@ def find_missing(
     declared_deps: list[DependencyInfo],
     third_party_imports: dict[str, set[str]],
     module_map: dict[str, list[str]],
+    optional_imports: dict[str, set[str]] = None,
 ) -> list[MissingDep]:
     """
     Find modules that are imported in code but not declared in dependency files.
 
     Args:
         declared_deps: Dependencies from requirements.txt / pyproject.toml
-        third_party_imports: Module → files map from AST scanner (filtered to 3rd-party)
+        third_party_imports: Module → files map from AST scanner
         module_map: Module name → package name mapping
+        optional_imports: Module → files map for optional (try/except) imports
 
     Returns:
         List of missing dependencies.
     """
+    optional_imports = optional_imports or {}
     # Build a set of all module names that are covered by declared deps
     declared_modules: set[str] = set()
     for dep in declared_deps:
@@ -35,6 +38,10 @@ def find_missing(
 
         # Skip if it's a first-party module (exists as a local directory/file)
         # This is handled by filtering before this function is called
+
+        # Skip if it is an optional dependency
+        if module in optional_imports:
+            continue
 
         # Check if any declared dep covers this module
         if module_lower not in declared_modules:

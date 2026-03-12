@@ -12,6 +12,11 @@ import httpx
 
 from depguard.models import DependencyInfo, Severity, VulnerabilityInfo
 
+try:
+    from cvss import CVSS3
+except ImportError:
+    CVSS3 = None
+
 # OSV.dev batch query endpoint — free, no API key needed
 OSV_BATCH_URL = "https://api.osv.dev/v1/querybatch"
 OSV_VULN_URL = "https://osv.dev/vulnerability/"
@@ -52,9 +57,13 @@ def _classify_severity(vuln_data: dict) -> tuple[Severity, Optional[float]]:
             try:
                 score = float(score_str)
             except (ValueError, TypeError):
-                # CVSS_V3 score might be a vector string, parse the score
-                # from database_specific or just use severity mapping
                 score = None
+                if CVSS3 is not None and isinstance(score_str, str) and score_str.startswith("CVSS:3"):
+                    try:
+                        c = CVSS3(score_str)
+                        score = c.scores()[0]
+                    except Exception:
+                        pass
 
             if score is not None:
                 if score >= 9.0:
@@ -65,8 +74,13 @@ def _classify_severity(vuln_data: dict) -> tuple[Severity, Optional[float]]:
                     return Severity.MEDIUM, score
                 return Severity.LOW, score
 
-    # Fallback: check database_specific severity
-    db_severity = vuln_data.get("database_specific", {}).get("severity")
+    # Fallback to database_specific severity or cvss dict
+    db_specific = vuln_data.get("database_specific", {})
+    db_severity = db_specific.get("severity")
+
+    if not db_severity and "cvss" in db_specific:
+        db_severity = db_specific["cvss"].get("severity")
+
     if db_severity:
         severity_map = {
             "CRITICAL": Severity.CRITICAL,
@@ -76,6 +90,13 @@ def _classify_severity(vuln_data: dict) -> tuple[Severity, Optional[float]]:
             "LOW": Severity.LOW,
         }
         return severity_map.get(db_severity.upper(), Severity.UNKNOWN), None
+
+    # Try specific ecosystem formats
+    for affected in vuln_data.get("affected", []):
+        db_specific = affected.get("database_specific", {})
+        if "cwes" in db_specific and not db_severity:
+            # If we only have CWEs but no severity string, we at least know it's a real vulnerability
+            pass
 
     return Severity.UNKNOWN, None
 
@@ -126,12 +147,31 @@ def scan_vulnerabilities(
     if not deps:
         return []
 
+    # Filter out deps with no known version — querying OSV without a
+    # version returns EVERY historical CVE, flooding the report with
+    # false positives.  Warn the user instead.
+    import sys
+
+    scannable_deps: list[DependencyInfo] = []
+    for dep in deps:
+        if not dep.installed_version:
+            print(
+                f"  ⚠️  Skipped CVE scan for {dep.name} (version unknown"
+                " — install deps first)",
+                file=sys.stderr,
+            )
+        else:
+            scannable_deps.append(dep)
+
+    if not scannable_deps:
+        return []
+
     cache = _load_cache()
     results: list[VulnerabilityInfo] = []
     deps_to_query: list[DependencyInfo] = []
 
     # Check cache first
-    for dep in deps:
+    for dep in scannable_deps:
         cache_key = f"{dep.name}:{dep.installed_version or 'latest'}"
         cached = cache.get(cache_key)
         if cached is not None:
@@ -150,31 +190,60 @@ def scan_vulnerabilities(
                 response.raise_for_status()
                 data = response.json()
 
-            # Process batch results
-            batch_results = data.get("results", [])
-            for dep, result in zip(deps_to_query, batch_results):
-                cache_key = f"{dep.name}:{dep.installed_version or 'latest'}"
-                dep_vulns: list[VulnerabilityInfo] = []
+                # Process batch results
+                batch_results = data.get("results", [])
+                for dep, result in zip(deps_to_query, batch_results):
+                    cache_key = f"{dep.name}:{dep.installed_version or 'latest'}"
+                    dep_vulns: list[VulnerabilityInfo] = []
+                    
+                    # Deduplicate vulnerabilities returned by OSV
+                    seen_vulns = set()
 
-                for vuln in result.get("vulns", []):
-                    severity, cvss_score = _classify_severity(vuln)
-                    fix_version = _extract_fix_version(vuln)
-                    vuln_id = vuln.get("id", "UNKNOWN")
+                    for basic_vuln in result.get("vulns", []):
+                        vuln_id = basic_vuln.get("id", "UNKNOWN")
+                        
+                        # Skip if we already processed this vulnerability for this package
+                        if (dep.name, vuln_id) in seen_vulns:
+                            continue
+                        seen_vulns.add((dep.name, vuln_id))
+                        
+                        if vuln_id != "UNKNOWN":
+                            try:
+                                # Fetch full OSV JSON for this specific vulnerability
+                                # because the Batch API strips summary and cvss details
+                                vuln_resp = client.get(f"https://api.osv.dev/v1/vulns/{vuln_id}")
+                                vuln_resp.raise_for_status()
+                                vuln_full = vuln_resp.json()
+                            except httpx.HTTPError:
+                                vuln_full = basic_vuln
+                        else:
+                            vuln_full = basic_vuln
 
-                    vuln_info = VulnerabilityInfo(
-                        dep_name=dep.name,
-                        vuln_id=vuln_id,
-                        summary=vuln.get("summary", "No summary available"),
-                        severity=severity,
-                        cvss_score=cvss_score,
-                        fix_version=fix_version,
-                        url=f"{OSV_VULN_URL}{vuln_id}",
-                    )
-                    dep_vulns.append(vuln_info)
+                        severity, cvss_score = _classify_severity(vuln_full)
+                        fix_version = _extract_fix_version(vuln_full)
 
-                results.extend(dep_vulns)
-                # Cache as dicts
-                cache[cache_key] = [v.model_dump() for v in dep_vulns]
+                        summary = vuln_full.get("summary")
+                        if not summary:
+                            details = vuln_full.get("details", "No details provided.")
+                            # Truncate to first sentence or 80 chars
+                            summary = details.split('\n')[0][:80]
+                            if len(details) > 80:
+                                summary += "..."
+
+                        vuln_info = VulnerabilityInfo(
+                            dep_name=dep.name,
+                            vuln_id=vuln_id,
+                            summary=summary,
+                            severity=severity,
+                            cvss_score=cvss_score,
+                            fix_version=fix_version,
+                            url=f"{OSV_VULN_URL}{vuln_id}",
+                        )
+                        dep_vulns.append(vuln_info)
+
+                    results.extend(dep_vulns)
+                    # Cache as dicts
+                    cache[cache_key] = [v.model_dump() for v in dep_vulns]
 
             _save_cache(cache)
 

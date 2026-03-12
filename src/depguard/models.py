@@ -110,6 +110,7 @@ class ScanResult(BaseModel):
     # Phase 2: Unused + Missing
     unused_deps: list[UnusedDep] = Field(default_factory=list)
     missing_deps: list[MissingDep] = Field(default_factory=list)
+    optional_deps: dict[str, set[str]] = Field(default_factory=dict)
 
     # Phase 3: Suggestions
     suggestions: list[SuggestionInfo] = Field(default_factory=list)

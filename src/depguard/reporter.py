@@ -93,14 +93,14 @@ def _render_vulnerabilities(result: ScanResult) -> None:
         return
 
     table = Table(
-        title="🔒 Security Vulnerabilities",
+        title="🔒 Security Vulnerabilities (Affecting Installed Versions)",
         show_lines=True,
         border_style="red",
     )
     table.add_column("Severity", justify="center", width=10)
     table.add_column("Package", style="bold")
     table.add_column("Vulnerability", style="dim")
-    table.add_column("Summary", max_width=40)
+    table.add_column("Summary", overflow="fold")
     table.add_column("Fix Version", style="green")
 
     for vuln in vulns:
@@ -110,8 +110,8 @@ def _render_vulnerabilities(result: ScanResult) -> None:
         table.add_row(
             Text(f"{sev_icon} {vuln.severity.value.upper()}", style=sev_color),
             vuln.dep_name,
-            vuln.vuln_id,
-            vuln.summary[:60] + "..." if len(vuln.summary) > 60 else vuln.summary,
+            f"[link={vuln.url}]{vuln.vuln_id}[/link]",
+            vuln.summary,
             vuln.fix_version or "N/A",
         )
 
@@ -223,6 +223,30 @@ def _render_missing(result: ScanResult) -> None:
     console.print()
 
 
+def _render_optional_deps(result: ScanResult) -> None:
+    """Print optional dependencies (safe, purely informational)."""
+    if not result.optional_deps:
+        return
+
+    table = Table(
+        title="ℹ️  Optional Dependencies",
+        show_lines=False,
+        border_style="blue",
+    )
+    table.add_column("Module", style="bold blue")
+    table.add_column("Imported In (try/except fallback)", style="dim")
+
+    for module_name, file_set in sorted(result.optional_deps.items()):
+        file_list = sorted(list(file_set))
+        files_str = ", ".join(file_list[:3])
+        if len(file_list) > 3:
+            files_str += f" (+{len(file_list) - 3} more)"
+        table.add_row(module_name, files_str)
+
+    console.print(table)
+    console.print()
+
+
 def _render_suggestions(result: ScanResult) -> None:
     """Print smart replacement suggestions."""
     if not result.suggestions:
@@ -235,6 +259,49 @@ def _render_suggestions(result: ScanResult) -> None:
             f"[green]{sug.suggested_dep}[/]: {sug.reason}"
         )
     console.print()
+
+
+def _render_resolutions(result: ScanResult) -> None:
+    """Print actionable next steps for the user."""
+    issues = False
+    actions = Text()
+    
+    # 1. Vulnerabilities
+    if result.vulnerabilities:
+        issues = True
+        actions.append("> ", style="bold")
+        actions.append("Security: ", style="bold red")
+        packages = list(set([v.dep_name for v in result.vulnerabilities]))
+        actions.append(f"Upgrade vulnerable packages ({', '.join(packages)}) to their fixed versions.\n")
+    
+    # 2. Unused
+    if result.unused_deps:
+        issues = True
+        actions.append("> ", style="bold")
+        actions.append("Unused:   ", style="bold yellow")
+        packages = [u.dep_name for u in result.unused_deps]
+        pkg_str = " ".join(packages[:3])
+        if len(packages) > 3:
+            pkg_str += f" (and {len(packages) - 3} others)"
+        actions.append(f"Run 'pip uninstall {pkg_str}' or add them to 'ignore_unused' in pyproject.toml.\n")
+        
+    # 3. Missing
+    if result.missing_deps:
+        issues = True
+        actions.append("> ", style="bold")
+        actions.append("Missing:  ", style="bold magenta")
+        packages = [m.module_name for m in result.missing_deps]
+        pkg_str = " ".join(packages[:3])
+        if len(packages) > 3:
+            pkg_str += f" (and {len(packages) - 3} others)"
+        actions.append(f"Run 'pip install {pkg_str}' and declare them in your dependency file.\n")
+        
+    if issues:
+        # Strip trailing newline for cleaner panel padding
+        actions.rstrip()
+        console.print(Panel(actions, title="🛠️  Recommended Next Steps", border_style="blue", expand=False))
+        console.print()
+
 
 
 def _render_summary(result: ScanResult) -> None:
@@ -280,7 +347,9 @@ def report_rich(result: ScanResult) -> None:
     _render_bloat(result)
     _render_unused(result)
     _render_missing(result)
+    _render_optional_deps(result)
     _render_suggestions(result)
+    _render_resolutions(result)
     _render_summary(result)
 
 

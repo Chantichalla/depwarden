@@ -26,6 +26,8 @@ class DepguardConfig:
     exclude: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
     fail_on: Optional[str] = None
     include_dev_deps: bool = True  # Whether to count dev deps as "declared"
+    ignore_unused: list[str] = field(default_factory=list)
+    ignore_vulns: list[str] = field(default_factory=list)
 
     @classmethod
     def from_pyproject(cls, project_path: str) -> "DepguardConfig":
@@ -52,6 +54,8 @@ class DepguardConfig:
                 exclude=tool_config.get("exclude", list(DEFAULT_EXCLUDE_DIRS)),
                 fail_on=tool_config.get("fail_on", tool_config.get("fail-on")),
                 include_dev_deps=tool_config.get("include_dev_deps", True),
+                ignore_unused=tool_config.get("ignore_unused", []),
+                ignore_vulns=tool_config.get("ignore_vulns", []),
             )
 
         except Exception:

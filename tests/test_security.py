@@ -121,10 +121,22 @@ class TestScanVulnerabilities:
         }
         mock_response.raise_for_status = MagicMock()
 
+        mock_get_response = MagicMock()
+        mock_get_response.json.return_value = {
+            "id": "GHSA-test-1234",
+            "summary": "Test vulnerability",
+            "severity": [{"type": "CVSS_V3", "score": "7.5"}],
+            "affected": [{
+                "ranges": [{"events": [{"fixed": "2.31.0"}]}]
+            }],
+        }
+        mock_get_response.raise_for_status = MagicMock()
+
         mock_client = MagicMock()
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
         mock_client.post.return_value = mock_response
+        mock_client.get.return_value = mock_get_response
         mock_client_cls.return_value = mock_client
 
         deps = [DependencyInfo(name="requests", installed_version="2.28.0")]

@@ -54,11 +54,13 @@ def calculate_health_score(
         breakdown["vulnerabilities"] = -vuln_penalty
         score -= vuln_penalty
 
-    # Bloat penalties
+    # Bloat penalties (Capped at -20 so large frameworks don't auto-fail)
     bloat_penalty = 0
     for entry in bloat_entries:
         if entry.is_bloated:
             bloat_penalty += PENALTY_BLOATED_DEP
+            
+    bloat_penalty = min(bloat_penalty, 20)
 
     if bloat_penalty:
         breakdown["bloated_deps"] = -bloat_penalty

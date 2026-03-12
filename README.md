@@ -9,12 +9,14 @@
 
 depguard is a CLI tool that scans your Python project's dependencies for:
 
-- 🔒 **Security vulnerabilities** — CVE scanning via the OSV.dev database
+- 🔒 **Security vulnerabilities** — CVE scanning via the OSV.dev database with clickable advisory links
 - 📦 **Dependency bloat** — how many sub-dependencies each package pulls in
 - 📊 **Health scoring** — 0-100 project health rating with letter grades (A-F)
 - 🗑️ **Unused dependencies** — packages declared but never imported (project-wide)
 - ❓ **Missing dependencies** — modules imported but not declared
 - 💡 **Smart suggestions** — modern alternatives for common packages
+- 🛠️ **Actionable next steps** — copy-paste commands to fix every issue
+- 🔗 **Clickable CVE links** — Ctrl+Click vulnerability IDs to open full advisories in your browser
 
 ## Quick Start
 
@@ -70,9 +72,12 @@ AI IDEs catch import errors in your editor. **depguard catches dependency health
 | Feature | pip-audit | deptry | safety | **depguard** |
 |---|---|---|---|---|
 | CVE scanning | ✅ | ❌ | ✅ | ✅ |
+| Clickable CVE links | ❌ | ❌ | ❌ | ✅ |
 | Bloat analysis | ❌ | ❌ | ❌ | ✅ |
 | Unused detection | ❌ | ✅ | ❌ | ✅ |
 | Health score | ❌ | ❌ | ❌ | ✅ |
+| Interactive loader | ❌ | ❌ | ❌ | ✅ |
+| CVE ignore list | ✅ | ❌ | ❌ | ✅ |
 | Free, no API key | ✅ | ✅ | ❌ | ✅ |
 
 ## Configuration
@@ -89,6 +94,14 @@ fail_on = "high"
 
 # Whether to include dev dependencies in analysis
 include_dev_deps = true
+
+# Packages to ignore in unused dependency detection
+# Useful for CLI tools (uvicorn), meta-packages (langchain), or runtime-only deps
+ignore_unused = ["uvicorn", "gunicorn", "langchain"]
+
+# Specific vulnerability IDs to ignore (accepted risk)
+# Use the exact GHSA/PYSEC/CVE ID shown in the scan output
+ignore_vulns = ["PYSEC-2022-43012", "GHSA-r9hx-vwmv-q579"]
 ```
 
 ### Default Excludes
@@ -114,7 +127,9 @@ Arguments:
 Options:
   --full                  Include unused/missing dependency detection
   --format, -f TEXT       Output format: 'rich' or 'json' (default: rich)
-  --fail-on TEXT          Exit code 1 if severity >= threshold (critical/high/medium/low)
+  --fail-on TEXT          Exit code 1 on issues. Values:
+                            Security: critical, high, medium, low
+                            Quality:  unused, bloat, any
   --no-security           Skip vulnerability scanning (useful offline)
   --no-bloat              Skip bloat analysis
   --exclude, -e TEXT      Directories to exclude (can be repeated)
@@ -139,7 +154,37 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install depguard
+      - run: pip install -r requirements.txt
       - run: depguard scan . --full --fail-on high
+```
+
+### GitLab CI
+
+```yaml
+depguard:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install depguard
+    - pip install -r requirements.txt
+    - depguard scan . --full --fail-on high --format json
+  allow_failure: false
+```
+
+### Pre-commit Hook
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: depguard
+        name: depguard
+        entry: depguard scan . --fail-on critical
+        language: python
+        additional_dependencies: [depguard]
+        always_run: true
+        pass_filenames: false
 ```
 
 ### Exit Codes
@@ -158,6 +203,19 @@ jobs:
 4. **Scans** all `.py` files using Python's AST to find actual imports (with `--full`)
 5. **Compares** declared vs. imported to find unused and missing dependencies
 6. **Scores** your project 0-100 and outputs a beautiful terminal report or JSON
+
+## Interactive Experience
+
+depguard features a custom loading animation during scans:
+
+```
+[ •_• ] Contacting OSV.dev vulnerability database...
+[ o_o ] Calculating transitive dependency bloat...
+[ O_O ] Parsing Abstract Syntax Trees...
+[ -_- ] Finalizing health scores...
+```
+
+Vulnerability IDs in the output are **clickable hyperlinks** — Ctrl+Click (or Cmd+Click on Mac) any CVE/GHSA ID to open the full advisory in your browser.
 
 ## Supported Dependency Files
 

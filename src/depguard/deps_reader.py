@@ -184,11 +184,14 @@ def read_dependencies(project_path: str) -> list[DependencyInfo]:
 
     if pyproject.exists():
         deps = parse_pyproject_toml(str(pyproject))
-    elif requirements.exists():
+        
+    if not deps and requirements.exists():
         deps = parse_requirements_txt(str(requirements))
-    elif setup_cfg.exists():
+        
+    if not deps and setup_cfg.exists():
         deps = parse_setup_cfg(str(setup_cfg))
-    else:
+        
+    if not deps:
         # Try to find any requirements*.txt
         for f in sorted(project.glob("requirements*.txt")):
             deps.extend(parse_requirements_txt(str(f)))

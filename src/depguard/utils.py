@@ -112,6 +112,10 @@ def get_stdlib_modules() -> set[str]:
             
     # Always include these, even on older Pythons where they might be polyfilled
     stdlib.update({"tomllib", "importlib"})
+
+    # Type-checker pseudo-modules and other special modules — never real PyPI packages
+    stdlib.update({"_typeshed", "_types", "__main__", "annotationlib"})
+
     return stdlib
 
 
