@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from depguard.models import DependencyInfo
-from depguard.unused import find_unused
+from depwarden.models import DependencyInfo
+from depwarden.unused import find_unused
 
 
 class TestFindUnused:

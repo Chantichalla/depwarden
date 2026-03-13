@@ -1,13 +1,13 @@
-# 🛡️ depguard
+# 🛡️ depwarden
 
 > **Escape Dependency Hell** — Scan, audit, and fix your Python dependencies in one command.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## What is depguard?
+## What is depwarden?
 
-depguard is a CLI tool that scans your Python project's dependencies for:
+depwarden is a CLI tool that scans your Python project's dependencies for:
 
 - 🔒 **Security vulnerabilities** — CVE scanning via the OSV.dev database with clickable advisory links
 - 📦 **Dependency bloat** — how many sub-dependencies each package pulls in
@@ -21,29 +21,29 @@ depguard is a CLI tool that scans your Python project's dependencies for:
 ## Quick Start
 
 ```bash
-pip install depguard
+pip install depwarden
 
 # Basic scan (security + bloat)
-depguard scan .
+depwarden scan .
 
 # Full scan (includes unused/missing detection)
-depguard scan . --full
+depwarden scan . --full
 
 # JSON output for CI/CD pipelines
-depguard scan . --format json
+depwarden scan . --format json
 
 # Fail CI if HIGH+ vulnerabilities found
-depguard scan . --fail-on high
+depwarden scan . --fail-on high
 
 # Exclude specific directories from scanning
-depguard scan . --full --exclude migrations --exclude scripts
+depwarden scan . --full --exclude migrations --exclude scripts
 ```
 
 ## Example Output
 
 ```
 ╭───────────────────────────────────────╮
-│ 🛡️  depguard — Escape Dependency Hell │
+│ 🛡️  depwarden — Escape Dependency Hell │
 ╰───────────────────────────────────────╯
   📂 Project: /home/user/myproject
   📦 Dependencies scanned: 7
@@ -65,11 +65,11 @@ depguard scan . --full --exclude migrations --exclude scripts
   ✅ No issues found — dependencies are healthy!
 ```
 
-## Why depguard?
+## Why depwarden?
 
-AI IDEs catch import errors in your editor. **depguard catches dependency health issues in your CI/CD pipeline** — where no IDE exists.
+AI IDEs catch import errors in your editor. **depwarden catches dependency health issues in your CI/CD pipeline** — where no IDE exists.
 
-| Feature | pip-audit | deptry | safety | **depguard** |
+| Feature | pip-audit | deptry | safety | **depwarden** |
 |---|---|---|---|---|
 | CVE scanning | ✅ | ❌ | ✅ | ✅ |
 | Clickable CVE links | ❌ | ❌ | ❌ | ✅ |
@@ -82,10 +82,10 @@ AI IDEs catch import errors in your editor. **depguard catches dependency health
 
 ## Configuration
 
-depguard can be configured via `pyproject.toml` so you don't need to pass flags every time:
+depwarden can be configured via `pyproject.toml` so you don't need to pass flags every time:
 
 ```toml
-[tool.depguard]
+[tool.depwarden]
 # Directories to exclude from import scanning
 exclude = ["tests", "docs", "migrations", "scripts"]
 
@@ -106,7 +106,7 @@ ignore_vulns = ["PYSEC-2022-43012", "GHSA-r9hx-vwmv-q579"]
 
 ### Default Excludes
 
-When running `--full` scans, depguard automatically skips these directories to avoid false positives from test fixtures and example code:
+When running `--full` scans, depwarden automatically skips these directories to avoid false positives from test fixtures and example code:
 
 - `tests/`, `test/` — test directories
 - `docs/` — documentation
@@ -114,12 +114,12 @@ When running `--full` scans, depguard automatically skips these directories to a
 - `benchmarks/` — performance benchmarks
 - `scripts/` — utility scripts
 
-You can override these defaults in `[tool.depguard]` or add more via `--exclude`.
+You can override these defaults in `[tool.depwarden]` or add more via `--exclude`.
 
 ## CLI Reference
 
 ```bash
-depguard scan [PATH] [OPTIONS]
+depwarden scan [PATH] [OPTIONS]
 
 Arguments:
   PATH                    Path to the project (default: current dir)
@@ -134,7 +134,7 @@ Options:
   --no-bloat              Skip bloat analysis
   --exclude, -e TEXT      Directories to exclude (can be repeated)
 
-depguard version          Show version info
+depwarden version          Show version info
 ```
 
 ## CI/CD Integration
@@ -146,28 +146,28 @@ name: Dependency Health Check
 on: [push, pull_request]
 
 jobs:
-  depguard:
+  depwarden:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install depguard
+      - run: pip install depwarden
       - run: pip install -r requirements.txt
-      - run: depguard scan . --full --fail-on high
+      - run: depwarden scan . --full --fail-on high
 ```
 
 ### GitLab CI
 
 ```yaml
-depguard:
+depwarden:
   stage: test
   image: python:3.12-slim
   script:
-    - pip install depguard
+    - pip install depwarden
     - pip install -r requirements.txt
-    - depguard scan . --full --fail-on high --format json
+    - depwarden scan . --full --fail-on high --format json
   allow_failure: false
 ```
 
@@ -178,11 +178,11 @@ depguard:
 repos:
   - repo: local
     hooks:
-      - id: depguard
-        name: depguard
-        entry: depguard scan . --fail-on critical
+      - id: depwarden
+        name: depwarden
+        entry: depwarden scan . --fail-on critical
         language: python
-        additional_dependencies: [depguard]
+        additional_dependencies: [depwarden]
         always_run: true
         pass_filenames: false
 ```
@@ -197,16 +197,21 @@ repos:
 
 ## How It Works
 
-1. **Reads** your `pyproject.toml`, `requirements.txt`, or `setup.cfg`
-2. **Queries** the [OSV.dev](https://osv.dev) database for known CVEs (free, no API key)
-3. **Analyzes** each dependency's sub-dependency tree for bloat
-4. **Scans** all `.py` files using Python's AST to find actual imports (with `--full`)
-5. **Compares** declared vs. imported to find unused and missing dependencies
-6. **Scores** your project 0-100 and outputs a beautiful terminal report or JSON
+depwarden works in two distinct phases to give you a complete picture of your project:
+
+**Phase 1: Metadata Tracking (What you claim you use)**
+1. **Reads** your `pyproject.toml`, `requirements.txt`, or `setup.cfg` to find your *declared* packages and their versions. (We support `requirements.txt` because many legacy or Docker-based projects still rely on it, but it is not mandatory if you use `pyproject.toml`).
+2. **Queries** the [OSV.dev](https://osv.dev) database using those exact declared versions to find known CVEs.
+3. **Analyzes** the transitive dependency tree to find hidden bloat.
+
+**Phase 2: Actual Usage (What you actually use)**
+4. **AST Code Scanning:** depwarden uses Python's `ast` (Abstract Syntax Tree) module to parse every single `.py` file in your project. It finds every actual `import` statement in your source code without executing the code.
+5. **Cross-Referencing:** It compares the real imports (from AST) against your declared packages (from Phase 1) to identify **Unused dependencies** (declared but never imported) and **Missing dependencies** (imported but not declared).
+6. **Scores** your project 0-100 and outputs a beautiful terminal report.
 
 ## Interactive Experience
 
-depguard features a custom loading animation during scans:
+depwarden features a custom loading animation during scans:
 
 ```
 [ •_• ] Contacting OSV.dev vulnerability database...

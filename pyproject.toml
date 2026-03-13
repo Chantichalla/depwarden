@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "depguard"
+name = "depwarden"
 version = "0.1.0"
 description = "Escape Dependency Hell — Scan, audit, and fix your Python dependencies in one command."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.8"
 authors = [
-    { name = "depguard contributors" },
+    { name = "depwarden contributors" },
 ]
 keywords = ["dependencies", "security", "vulnerability", "bloat", "audit", "cli"]
 classifiers = [
@@ -43,18 +43,18 @@ dev = [
 ]
 
 [project.scripts]
-depguard = "depguard.cli:app"
+depwarden = "depwarden.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/depguard/depguard"
-Repository = "https://github.com/depguard/depguard"
-Issues = "https://github.com/depguard/depguard/issues"
+Homepage = "https://github.com/depwarden/depwarden"
+Repository = "https://github.com/depwarden/depwarden"
+Issues = "https://github.com/depwarden/depwarden/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/depguard"]
+packages = ["src/depwarden"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["depguard"]
+source = ["depwarden"]

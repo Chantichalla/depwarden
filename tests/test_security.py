@@ -7,8 +7,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from depguard.models import DependencyInfo, Severity
-from depguard.security import (
+from depwarden.models import DependencyInfo, Severity
+from depwarden.security import (
     scan_vulnerabilities,
     _classify_severity,
     _extract_fix_version,
@@ -101,9 +101,9 @@ class TestBuildBatchQuery:
 class TestScanVulnerabilities:
     """Tests for the full scan function with mocked API."""
 
-    @patch("depguard.security._load_cache", return_value={})
-    @patch("depguard.security._save_cache")
-    @patch("depguard.security.httpx.Client")
+    @patch("depwarden.security._load_cache", return_value={})
+    @patch("depwarden.security._save_cache")
+    @patch("depwarden.security.httpx.Client")
     def test_scan_with_vulns(self, mock_client_cls, mock_save, mock_load):
         """Test scanning with mocked OSV API returning vulnerabilities."""
         mock_response = MagicMock()
@@ -147,9 +147,9 @@ class TestScanVulnerabilities:
         assert vulns[0].severity == Severity.HIGH
         assert vulns[0].fix_version == "2.31.0"
 
-    @patch("depguard.security._load_cache", return_value={})
-    @patch("depguard.security._save_cache")
-    @patch("depguard.security.httpx.Client")
+    @patch("depwarden.security._load_cache", return_value={})
+    @patch("depwarden.security._save_cache")
+    @patch("depwarden.security.httpx.Client")
     def test_scan_no_vulns(self, mock_client_cls, mock_save, mock_load):
         """Test scanning with no vulnerabilities found."""
         mock_response = MagicMock()

@@ -1,4 +1,4 @@
-"""Shared fixtures for depguard tests."""
+"""Shared fixtures for depwarden tests."""
 
 from __future__ import annotations
 

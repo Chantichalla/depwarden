@@ -6,14 +6,14 @@ from unittest.mock import patch
 
 import pytest
 
-from depguard.bloat import analyze_bloat, _resolve_full_tree, get_dependency_tree
-from depguard.models import DependencyInfo
+from depwarden.bloat import analyze_bloat, _resolve_full_tree, get_dependency_tree
+from depwarden.models import DependencyInfo
 
 
 class TestResolveFullTree:
     """Tests for transitive dependency resolution."""
 
-    @patch("depguard.bloat._get_direct_requires")
+    @patch("depwarden.bloat._get_direct_requires")
     def test_simple_tree(self, mock_requires):
         """A → B → C should return {a, b, c}."""
         mock_requires.side_effect = lambda name: {
@@ -27,7 +27,7 @@ class TestResolveFullTree:
         assert "b" in tree
         assert "c" in tree
 
-    @patch("depguard.bloat._get_direct_requires")
+    @patch("depwarden.bloat._get_direct_requires")
     def test_circular_dependency(self, mock_requires):
         """A → B → A should not loop forever."""
         mock_requires.side_effect = lambda name: {
@@ -39,7 +39,7 @@ class TestResolveFullTree:
         assert "a" in tree
         assert "b" in tree
 
-    @patch("depguard.bloat._get_direct_requires")
+    @patch("depwarden.bloat._get_direct_requires")
     def test_no_deps(self, mock_requires):
         """A with no dependencies should return just {a}."""
         mock_requires.return_value = []
@@ -51,7 +51,7 @@ class TestResolveFullTree:
 class TestAnalyzeBloat:
     """Tests for the full bloat analysis."""
 
-    @patch("depguard.bloat._resolve_full_tree")
+    @patch("depwarden.bloat._resolve_full_tree")
     def test_flags_bloated_dep(self, mock_tree):
         """A dep with >20 transitive deps should be flagged as bloated."""
         # 25 transitive deps (+ self = 26 in tree)
@@ -66,7 +66,7 @@ class TestAnalyzeBloat:
         assert entries[0].is_bloated is True
         assert entries[0].transitive_count == 25
 
-    @patch("depguard.bloat._resolve_full_tree")
+    @patch("depwarden.bloat._resolve_full_tree")
     def test_not_flagged_when_small(self, mock_tree):
         """A dep with few transitive deps should NOT be flagged."""
         mock_tree.return_value = {"small_package", "dep_1", "dep_2"}
@@ -85,7 +85,7 @@ class TestAnalyzeBloat:
 class TestDependencyTree:
     """Tests for tree visualization builder."""
 
-    @patch("depguard.bloat._get_direct_requires")
+    @patch("depwarden.bloat._get_direct_requires")
     def test_tree_depth_limit(self, mock_requires):
         """Tree should stop at max_depth."""
         mock_requires.return_value = ["child"]

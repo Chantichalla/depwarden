@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from depguard.health_score import calculate_health_score
-from depguard.models import BloatEntry, HealthScore, Severity, UnusedDep, VulnerabilityInfo
+from depwarden.health_score import calculate_health_score
+from depwarden.models import BloatEntry, HealthScore, Severity, UnusedDep, VulnerabilityInfo
 
 
 class TestHealthScore:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from depguard.deps_reader import (
+from depwarden.deps_reader import (
     parse_requirements_txt,
     parse_pyproject_toml,
     read_dependencies,

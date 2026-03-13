@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from depguard.models import DependencyInfo
-from depguard.missing import find_missing
+from depwarden.models import DependencyInfo
+from depwarden.missing import find_missing
 
 
 class TestFindMissing:

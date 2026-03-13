@@ -5,19 +5,19 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from depguard.cli import app
+from depwarden.cli import app
 
 runner = CliRunner()
 
 
 class TestScanCommand:
-    """Tests for the `depguard scan` CLI command."""
+    """Tests for the `depwarden scan` CLI command."""
 
     def test_scan_healthy_project(self, healthy_project):
         """Scanning a healthy fixture should succeed (exit 0)."""
         result = runner.invoke(app, ["scan", healthy_project, "--no-security"])
         assert result.exit_code == 0
-        assert "depguard" in result.output
+        assert "depwarden" in result.output
 
     def test_scan_nonexistent_path(self):
         """Scanning a nonexistent path should fail (exit 2)."""
@@ -54,9 +54,9 @@ class TestScanCommand:
 
 
 class TestVersionCommand:
-    """Tests for the `depguard version` command."""
+    """Tests for the `depwarden version` command."""
 
     def test_version_output(self):
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "depguard v" in result.output
+        assert "depwarden v" in result.output

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from depguard.scanner import scan_imports, _extract_imports_from_file
+from depwarden.scanner import scan_imports, _extract_imports_from_file
 
 
 class TestExtractImports:
