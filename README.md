@@ -228,7 +228,7 @@ Vulnerability IDs in the output are **clickable hyperlinks** — Ctrl+Click (or 
 - `requirements.txt` (including `-r` recursive includes)
 - `setup.cfg`
 
-## Keeps your stress levels low
+## Keeps your stress levels low by avoiding frustating over dependency mess
 
 ## License
 
