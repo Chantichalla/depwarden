@@ -230,7 +230,7 @@ Vulnerability IDs in the output are **clickable hyperlinks** — Ctrl+Click (or 
 
 ## Keeps your stress levels low by avoiding frustating over dependency mess . This is just a tool made in less amount of time for a good impact
 Use this tool inside your ci/cd workflows .
-
+Always hope that it solves  
 ## License
 
 MIT
